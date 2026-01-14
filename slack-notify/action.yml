@@ -1,0 +1,36 @@
+name: Slack Notify
+description: Send a Slack notification
+inputs:
+  webhook:
+    required: true
+  title:
+    required: true
+  color:
+    required: false
+    default: good
+
+runs:
+  using: composite
+  steps:
+    - uses: slackapi/slack-github-action@v2.1.1
+      with:
+        webhook: ${{ inputs.webhook }}
+        webhook-type: incoming-webhook
+        payload: |
+          blocks:
+            - type: "header"
+              text:
+                type: "plain_text"
+                text: "${{ inputs.title }}"
+            - type: "section"
+              fields:
+                - type: "mrkdwn"
+                  text: "*Repository:*\n<https://github.com/${{ github.repository }}|${{ github.repository }}>"
+                - type: "mrkdwn"
+                  text: "*Workflow:*\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>"
+            - type: "section"
+              fields:
+                - type: "mrkdwn"
+                  text: "*Commit / PR:*\n<${{ github.event.pull_request.html_url || github.event.head_commit.url }}|${{ github.event.pull_request.title || github.event.pull_request.number || github.sha }}>"
+                - type: "mrkdwn"
+                  text: "*Author:*\n`${{ github.actor }}`"

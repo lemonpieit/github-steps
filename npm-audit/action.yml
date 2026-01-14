@@ -1,0 +1,28 @@
+name: NPM Audit with Slack
+description: Run npm audit, notify Slack on medium+ issues, fail workflow
+
+inputs:
+  webhook:
+    required: true
+    description: Slack incoming webhook URL
+
+runs:
+  using: composite
+  steps:
+    - name: Run npm audit (medium+)
+      id: audit
+      continue-on-error: true
+      shell: bash
+      run: npm audit --audit-level=moderate
+
+    - name: Notify Slack on failure
+      if: steps.audit.outcome == 'failure'
+      uses: ../slack-notify
+      with:
+        webhook: ${{ inputs.webhook }}
+        title: "🚨 Security audit failed: Medium or higher vulnerabilities detected"
+
+    - name: Fail workflow
+      if: steps.audit.outcome == 'failure'
+      shell: bash
+      run: exit 1
