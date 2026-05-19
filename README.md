@@ -1,7 +1,5 @@
 # Usage Guide
 
-This repository contains reusable GitHub Actions for security audits and Slack notifications.
-
 ## Available Actions
 
 ### 1. NPM Audit with Slack
