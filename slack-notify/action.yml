@@ -2,7 +2,7 @@ name: Slack Notify
 description: Send a Slack notification
 inputs:
   webhook:
-    required: true
+    required: false
   title:
     required: true
   color:
@@ -12,7 +12,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: slackapi/slack-github-action@v3
+    - if: inputs.webhook != ''
+      uses: slackapi/slack-github-action@v3
       with:
         webhook: ${{ inputs.webhook }}
         webhook-type: incoming-webhook

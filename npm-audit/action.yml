@@ -3,8 +3,8 @@ description: Run npm audit, notify Slack on medium+ issues, fail workflow
 
 inputs:
   webhook:
-    required: true
-    description: Slack incoming webhook URL
+    required: false
+    description: Slack incoming webhook URL (optional — omit to skip Slack notification)
 
 runs:
   using: composite
@@ -16,8 +16,8 @@ runs:
       run: npm audit --audit-level=high
 
     - name: Notify Slack on failure
-      if: steps.audit.outcome == 'failure'
-      uses: lemonpieit/github-steps/slack-notify@v1.0.6
+      if: steps.audit.outcome == 'failure' && inputs.webhook != ''
+      uses: lemonpieit/github-steps/slack-notify@v1.0.7
       with:
         webhook: ${{ inputs.webhook }}
         title: "🚨 Security audit failed: High or higher vulnerabilities detected"
