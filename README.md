@@ -76,7 +76,7 @@ Sends formatted Slack notifications with repository, workflow, and commit inform
 To create a new release from the terminal using the GitHub CLI:
 
 ```bash
-gh release create v1.0.0 --title "v1.0.0"
+gh release create v1.0.8 --title "v1.0.8"
 ```
 
 Replace `v1.0.0` with the desired version tag. Actions in this repo are referenced by these version tags (e.g. `npm-audit@v1.0.0`).
