@@ -7,13 +7,14 @@
 Runs `npm audit` and notifies Slack when vulnerabilities are detected.
 
 #### Location
-`npm-audit@v1.0.7`
+`npm-audit@v1.0.8`
 
 #### Inputs
 
-| Input | Required | Description |
-|-------|----------|-------------|
-| `webhook` | ❌ | Slack incoming webhook URL. Omit to skip Slack notification. |
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `webhook` | ❌ | - | Slack incoming webhook URL. Omit to skip Slack notification. |
+| `include-results` | ❌ | `true` | Include the npm audit summary as a subtitle in the Slack notification. |
 
 #### Behavior
 
@@ -24,13 +25,19 @@ Runs `npm audit` and notifies Slack when vulnerabilities are detected.
 #### Example Usage
 
 ```yaml
-# With Slack notification
-- uses: lemonpieit/github-steps/npm-audit@v1.0.7
+# With Slack notification and audit summary
+- uses: lemonpieit/github-steps/npm-audit@v1.0.8
   with:
     webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
 
+# With Slack notification but without audit summary
+- uses: lemonpieit/github-steps/npm-audit@v1.0.8
+  with:
+    webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+    include-results: 'false'
+
 # Without Slack notification
-- uses: lemonpieit/github-steps/npm-audit@v1.0.7
+- uses: lemonpieit/github-steps/npm-audit@v1.0.8
 ```
 
 ---
@@ -40,7 +47,7 @@ Runs `npm audit` and notifies Slack when vulnerabilities are detected.
 Sends formatted Slack notifications with repository, workflow, and commit information.
 
 #### Location
-`slack-notify@v1.0.7`
+`slack-notify@v1.0.8`
 
 #### Inputs
 
@@ -48,15 +55,17 @@ Sends formatted Slack notifications with repository, workflow, and commit inform
 |-------|----------|---------|-------------|
 | `webhook` | ❌ | - | Slack incoming webhook URL. Omit to skip sending the notification. |
 | `title` | ✅ | - | Notification title/header text |
+| `subtitle` | ❌ | - | Optional subtitle rendered below the title |
 | `color` | ❌ | `good` | Message color (good, warning, danger, etc.) |
 
 #### Example Usage
 
 ```yaml
-- uses: lemonpieit/github-steps/slack-notify@v1.0.7
+- uses: lemonpieit/github-steps/slack-notify@v1.0.8
   with:
     webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
     title: "✅ Deployment successful"
+    subtitle: "Deployed to production by ${{ github.actor }}"
     color: "good"
 ```
 

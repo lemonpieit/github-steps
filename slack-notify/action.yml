@@ -5,6 +5,9 @@ inputs:
     required: false
   title:
     required: true
+  subtitle:
+    required: false
+    default: ''
   color:
     required: false
     default: good
@@ -12,7 +15,35 @@ inputs:
 runs:
   using: composite
   steps:
-    - if: inputs.webhook != ''
+    - if: inputs.webhook != '' && inputs.subtitle != ''
+      uses: slackapi/slack-github-action@v3
+      with:
+        webhook: ${{ inputs.webhook }}
+        webhook-type: incoming-webhook
+        payload: |
+          blocks:
+            - type: "header"
+              text:
+                type: "plain_text"
+                text: "${{ inputs.title }}"
+            - type: "section"
+              text:
+                type: "mrkdwn"
+                text: "${{ inputs.subtitle }}"
+            - type: "section"
+              fields:
+                - type: "mrkdwn"
+                  text: "*Repository:*\n<https://github.com/${{ github.repository }}|${{ github.repository }}>"
+                - type: "mrkdwn"
+                  text: "*Workflow:*\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }}>"
+            - type: "section"
+              fields:
+                - type: "mrkdwn"
+                  text: "*Commit / PR:*\n<${{ github.event.pull_request.html_url || github.event.head_commit.url || format('https://github.com/{0}/actions/runs/{1}', github.repository, github.run_id) }}|${{ github.event.pull_request.title || github.event.pull_request.number || github.sha || 'View on GitHub' }}>"
+                - type: "mrkdwn"
+                  text: "*Author:*\n`${{ github.actor }}`"
+                  
+    - if: inputs.webhook != '' && inputs.subtitle == ''
       uses: slackapi/slack-github-action@v3
       with:
         webhook: ${{ inputs.webhook }}

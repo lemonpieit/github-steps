@@ -1,10 +1,14 @@
 name: NPM Audit with Slack
-description: Run npm audit, notify Slack on medium+ issues, fail workflow
+description: Run npm audit, notify Slack on high+ issues, fail workflow
 
 inputs:
   webhook:
     required: false
     description: Slack incoming webhook URL (optional — omit to skip Slack notification)
+  include-results:
+    required: false
+    default: 'true'
+    description: Whether to include the npm audit summary in the Slack notification subtitle
 
 runs:
   using: composite
@@ -13,14 +17,21 @@ runs:
       id: audit
       continue-on-error: true
       shell: bash
-      run: npm audit --audit-level=high
+      run: |
+        set +e
+        npm audit --audit-level=high > /tmp/npm-audit.txt 2>&1
+        exit_code=$?
+        summary=$(grep -E '^found [0-9]' /tmp/npm-audit.txt | tail -1)
+        echo "summary=$summary" >> "$GITHUB_OUTPUT"
+        exit $exit_code
 
     - name: Notify Slack on failure
       if: steps.audit.outcome == 'failure' && inputs.webhook != ''
-      uses: lemonpieit/github-steps/slack-notify@v1.0.7
+      uses: ./slack-notify
       with:
         webhook: ${{ inputs.webhook }}
         title: "🚨 Security audit failed: High or higher vulnerabilities detected"
+        subtitle: ${{ inputs.include-results == 'true' && steps.audit.outputs.summary || '' }}
 
     - name: Fail workflow
       if: steps.audit.outcome == 'failure'
