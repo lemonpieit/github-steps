@@ -27,7 +27,7 @@ runs:
 
     - name: Notify Slack on failure
       if: steps.audit.outcome == 'failure' && inputs.webhook != ''
-      uses: ./slack-notify
+      uses: lemonpieit/github-steps/slack-notify@v1.0.9
       with:
         webhook: ${{ inputs.webhook }}
         title: "🚨 Security audit failed: High or higher vulnerabilities detected"

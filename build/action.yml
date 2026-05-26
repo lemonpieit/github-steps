@@ -1,0 +1,161 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# lemonpieit/github-actions/build@v2
+#
+# Composite action: checkout → install → quality gates → build → test → package
+#
+# Usage:
+#
+#   steps:
+#     - uses: lemonpieit/github-actions/build@v2
+#       with:
+#         environment:         Production
+#         checkout_ref:        ${{ github.ref }}        # optional
+#         node_version:        "20"                     # optional, falls back to NODE_VERSION var
+#         run_security_audit:  true                     # optional
+#         run_type_check:      true                     # optional
+#         run_tests:           true                     # optional
+#         env_file_name:       .env.production          # optional
+#         env_file_contents:   |                        # optional
+#           NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+#         artifact_retention_days: 1                   # optional
+#         slack_webhook:       ${{ secrets.SLACK_WEBHOOK_URL }}  # omit to disable
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Build
+description: "Checkout, install, quality gates, build, test, and package a Node.js application."
+
+inputs:
+
+  # ── Checkout ─────────────────────────────────────────────────────────────
+  checkout_ref:
+    description: "Branch / tag / SHA to checkout. Defaults to the triggering commit."
+    required: false
+    default: ""
+
+  # ── Node.js ──────────────────────────────────────────────────────────────
+  node_version:
+    description: "Node.js version (e.g. '20'). Falls back to NODE_VERSION env var when empty."
+    required: false
+    default: ""
+
+  # ── Quality gates ─────────────────────────────────────────────────────────
+  run_security_audit:
+    description: "Run npm security audit via lemonpieit/github-steps/npm-audit."
+    required: false
+    default: "true"
+
+  run_type_check:
+    description: "Run TypeScript type checking (tsc --noEmit)."
+    required: false
+    default: "true"
+
+  run_tests:
+    description: "Run the test suite (npm run test)."
+    required: false
+    default: "true"
+
+  # ── Environment file ──────────────────────────────────────────────────────
+  env_file_name:
+    description: "Name of the env file to write before the build."
+    required: false
+    default: ".env.production"
+
+  env_file_contents:
+    description: |
+      Multiline content written verbatim to env_file_name before the build.
+      Leave empty to skip. Resolve vars/secrets in the caller:
+    required: false
+    default: ""
+
+  # ── Artifact ──────────────────────────────────────────────────────────────
+  artifact_retention_days:
+    description: "Days to retain the build artifact (default: 1)."
+    required: false
+    default: "1"
+
+  # ── Notifications ─────────────────────────────────────────────────────────
+  slack_webhook:
+    description: "Slack incoming webhook URL. Omit to disable Slack notifications."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+
+    # ── Notifications ────────────────────────────────────────────────────────
+    - name: Slack — build started
+      if: ${{ inputs.slack_webhook != '' }}
+      uses: lemonpieit/github-steps/slack-notify@v1.0.8
+      with:
+        webhook: ${{ inputs.slack_webhook }}
+        title: ":hourglass_flowing_sand: Build started"
+
+    # ── Node.js ──────────────────────────────────────────────────────────────
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node_version != '' && inputs.node_version || 24 }}
+        cache: "npm"
+
+    # ── Security ─────────────────────────────────────────────────────────────
+    - name: Security audit
+      if: ${{ inputs.run_security_audit == 'true' }}
+      uses: lemonpieit/github-steps/npm-audit@v1.0.8
+      with:
+        webhook: ${{ inputs.slack_webhook }}
+
+    # ── Install ───────────────────────────────────────────────────────────────
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    # ── Quality gates ─────────────────────────────────────────────────────────
+    - name: Type check
+      if: ${{ inputs.run_type_check == 'true' }}
+      shell: bash
+      run: npx tsc --noEmit
+
+    # ── Environment file ──────────────────────────────────────────────────────
+    - name: Write environment file
+      if: ${{ inputs.env_file_contents != '' }}
+      shell: bash
+      run: |
+        cat << 'ENV_EOF' > ${{ inputs.env_file_name }}
+        ${{ inputs.env_file_contents }}
+        ENV_EOF
+
+    # ── Build ─────────────────────────────────────────────────────────────────
+    - name: Build
+      shell: bash
+      run: npm run build --if-present
+
+    # ── Tests ─────────────────────────────────────────────────────────────────
+    - name: Test
+      if: ${{ inputs.run_tests == 'true' }}
+      shell: bash
+      run: npm run test --if-present
+
+    # ── Prune & package ───────────────────────────────────────────────────────
+    - name: Prune dev dependencies
+      shell: bash
+      run: npm prune --omit=dev
+
+    - name: Package artifact
+      shell: bash
+      run: zip -r node-app.zip . --exclude "node_modules/.cache/*" ".git/*"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: node-app
+        path: node-app.zip
+        retention-days: ${{ inputs.artifact_retention_days }}
+
+    # ── Notifications ─────────────────────────────────────────────────────────
+    - name: Slack — build ended
+      if: ${{ inputs.slack_webhook != '' && always() }}
+      uses: lemonpieit/github-steps/slack-notify@v1.0.8
+      with:
+        webhook: ${{ inputs.slack_webhook }}
+        title: "${{ job.status == 'success' && ':white_check_mark:' || ':x:' }} Build ${{ job.status }}"

@@ -1,0 +1,65 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# lemonpieit/github-actions/deploy@v2
+#
+# Composite action: download artifact → deploy to Azure WebApp
+#
+# Usage:
+#
+#   steps:
+#     - uses: lemonpieit/github-actions/deploy@v2
+#       with:
+#         azure_publish_profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+#         slack_webhook:         ${{ secrets.SLACK_WEBHOOK_URL }}  # omit to disable
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Deploy
+description: "Download the build artifact and deploy it to Azure WebApp."
+
+inputs:
+
+  # ── Azure ─────────────────────────────────────────────────────────────────
+  azure_webapp_name:
+    description: "Name of the Azure WebApp."
+    required: true
+
+  azure_publish_profile:
+    description: "Azure WebApp publish profile XML."
+    required: true
+
+  # ── Notifications ─────────────────────────────────────────────────────────
+  slack_webhook:
+    description: "Slack incoming webhook URL. Omit to disable Slack notifications."
+    required: false
+    default: ""
+
+outputs:
+  webapp_url:
+    description: "The URL of the deployed Azure WebApp."
+    value: ${{ steps.deploy-webapp.outputs.webapp-url }}
+
+runs:
+  using: composite
+  steps:
+
+    # ── Artifact ──────────────────────────────────────────────────────────────
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: node-app
+
+    # ── Deploy ────────────────────────────────────────────────────────────────
+    - name: Deploy — Azure WebApp
+      id: deploy-webapp
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ inputs.azure_webapp_name }}
+        publish-profile: ${{ inputs.azure_publish_profile }}
+        package: node-app.zip
+
+    # ── Notifications ─────────────────────────────────────────────────────────
+    - name: Slack — deploy ended
+      if: ${{ inputs.slack_webhook != '' && always() }}
+      uses: lemonpieit/github-steps/slack-notify@v1.0.8
+      with:
+        webhook: ${{ inputs.slack_webhook }}
+        title: "${{ job.status == 'success' && ':white_check_mark:' || ':x:' }} Deploy ${{ job.status }}"
